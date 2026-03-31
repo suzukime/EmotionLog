@@ -3,52 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>感情ログアプリ</title>
+    <title>感情ログアプリ (AWS接続版)</title>
     <style>
         body { font-family: -apple-system, sans-serif; text-align: center; padding: 20px; background-color: #f0f2f5; }
         .btn-group { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 30px; }
         .btn { padding: 15px 25px; font-size: 1.1rem; cursor: pointer; border-radius: 12px; border: none; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: transform 0.1s; }
         .btn:active { transform: scale(0.95); }
+        .status { margin-top: 10px; color: #666; font-size: 0.9rem; height: 20px; }
         .log-container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         .log-item { border-bottom: 1px solid #eee; padding: 12px; display: flex; justify-content: space-between; align-items: center; }
-        .log-time { color: #888; font-size: 0.9rem; }
-        .log-emotion { font-weight: bold; font-size: 1.1rem; }
+        .log-time { color: #888; font-size: 0.8rem; }
+        .log-emotion { font-weight: bold; }
     </style>
 </head>
 <body>
-    <h1>今の気持ちは？</h1>
+
+    <h1>今の気持ちは？ (AWS)</h1>
+    
     <div class="btn-group">
-        <button class="btn" onclick="record('楽しい！😊')">楽しい！😊</button>
-        <button class="btn" onclick="record('嬉しい！✨')">嬉しい！✨</button>
-        <button class="btn" onclick="record('悲しい😢')">悲しい😢</button>
-        <button class="btn" onclick="record('寂しい☁️')">寂しい☁️</button>
+        <button class="btn" onclick="sendToAWS('楽しい！😊')">楽しい！😊</button>
+        <button class="btn" onclick="sendToAWS('嬉しい！✨')">嬉しい！✨</button>
+        <button class="btn" onclick="sendToAWS('悲しい😢')">悲しい😢</button>
+        <button class="btn" onclick="sendToAWS('寂しい☁️')">寂しい☁️</button>
     </div>
+
+    <div id="statusMsg" class="status"></div>
+
     <div class="log-container">
-        <h2>これまでの記録</h2>
-        <div id="logList"></div>
+        <h2>AWSの記録（最新）</h2>
+        <div id="logList">ボタンを押すとAWSに保存されます</div>
     </div>
+
     <script>
-        function record(emotion) {
-            const now = new Date();
-            const timeStr = now.toLocaleString('ja-JP');
-            const entry = { time: timeStr, emotion: emotion };
-            const logs = JSON.parse(localStorage.getItem('emotionLogs') || '[]');
-            logs.unshift(entry); 
-            localStorage.setItem('emotionLogs', JSON.stringify(logs));
-            render();
+        // ★ここにコピーしたURLを貼り付けてください★
+        const API_URL = "https://tjtzqd7krc.execute-api.ap-southeast-2.amazonaws.com/";
+
+        async function sendToAWS(emotion) {
+            const statusDiv = document.getElementById('statusMsg');
+            statusDiv.innerText = "送信中...";
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ emotion: emotion })
+                });
+
+                if (response.ok) {
+                    statusDiv.innerText = "AWSに保存成功！";
+                    // 簡易的に画面にも追加
+                    addLogToScreen(emotion);
+                } else {
+                    statusDiv.innerText = "エラーが起きました";
+                }
+            } catch (error) {
+                console.error(error);
+                statusDiv.innerText = "通信に失敗しました";
+            }
         }
-        function render() {
-            const logs = JSON.parse(localStorage.getItem('emotionLogs') || '[]');
+
+        function addLogToScreen(emotion) {
             const listDiv = document.getElementById('logList');
-            listDiv.innerHTML = logs.map(log => `
+            if(listDiv.innerText.includes("保存されます")) listDiv.innerHTML = "";
+            
+            const now = new Date().toLocaleString('ja-JP');
+            const html = `
                 <div class="log-item">
-                    <span class="log-time">${log.time}</span>
-                    <span class="log-emotion">${log.emotion}</span>
+                    <span class="log-time">${now}</span>
+                    <span class="log-emotion">${emotion}</span>
                 </div>
-            `).join('');
+            `;
+            listDiv.innerHTML = html + listDiv.innerHTML;
         }
-        render();
     </script>
 </body>
 </html>
-
